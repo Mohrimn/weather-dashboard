@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useWeatherData } from '../hooks/useWeatherData';
 import { WeatherCard } from '../components/WeatherCard';
 import { WeatherChart } from '../components/WeatherChart';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { HistoricalDataView } from '../components/HistoricalDataView';
 import {
   transformCurrentWeatherData,
   transformForecastData,
@@ -11,8 +13,11 @@ import {
   transformPrecipitationData
 } from '../utils/weatherDataTransformers';
 
+type Tab = 'current' | 'historical';
+
 export default function WeatherDashboard() {
   const { currentData, forecastData, loading, error } = useWeatherData();
+  const [activeTab, setActiveTab] = useState<Tab>('current');
 
   if (loading) {
     return (
@@ -63,32 +68,64 @@ export default function WeatherDashboard() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Weather Dashboard</h1>
         
-        {/* Current Weather Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {currentData.map((data) => (
-            <WeatherCard key={data.provider} data={data} />
-          ))}
+        {/* Tab Navigation */}
+        <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('current')}
+              className={`${
+                activeTab === 'current'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Current Weather
+            </button>
+            <button
+              onClick={() => setActiveTab('historical')}
+              className={`${
+                activeTab === 'historical'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            >
+              Historical Data
+            </button>
+          </nav>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Temperature Forecast Charts by Provider */}
-          {Object.entries(forecastByProvider).map(([provider, forecasts]) => (
+        {activeTab === 'current' ? (
+          <>
+            {/* Current Weather Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {currentData.map((data) => (
+                <WeatherCard key={data.provider} data={data} />
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* Temperature Forecast Charts by Provider */}
+              {Object.entries(forecastByProvider).map(([provider, forecasts]) => (
+                <WeatherChart
+                  key={provider}
+                  title={`${provider} Temperature Forecast`}
+                  type="line"
+                  data={transformForecastToChartData(forecasts)}
+                  className="mb-8"
+                />
+              ))}
+            </div>
+
+            {/* Precipitation Forecast Comparison */}
             <WeatherChart
-              key={provider}
-              title={`${provider} Temperature Forecast`}
-              type="line"
-              data={transformForecastToChartData(forecasts)}
-              className="mb-8"
+              title="Precipitation Forecast Comparison"
+              type="bar"
+              data={precipitationData}
             />
-          ))}
-        </div>
-
-        {/* Precipitation Forecast Comparison */}
-        <WeatherChart
-          title="Precipitation Forecast Comparison"
-          type="bar"
-          data={precipitationData}
-        />
+          </>
+        ) : (
+          <HistoricalDataView />
+        )}
       </div>
     </div>
   );
