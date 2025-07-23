@@ -70,11 +70,53 @@ const incrementDailyCalls = (): boolean => {
   return true;
 };
 
-// DWD API (German Weather Service)
+// DWD API (German Weather Service via Bright Sky)
+// This implementation fetches coordinates for the configured postal code and
+// then retrieves the current weather data from the Bright Sky API which
+// exposes measurements from the German Weather Service (DWD).
 const fetchDWDData = async (): Promise<WeatherData> => {
-  // TODO: Implement DWD API call
-  // Note: DWD requires registration and has specific endpoints
-  throw new Error('DWD API not implemented yet');
+  const cacheKey = getCacheKey('current', 'DWD');
+  const cached = getCachedData<WeatherData>(cacheKey);
+  if (cached) return cached;
+
+  if (!incrementDailyCalls()) {
+    throw new Error('Daily API call limit reached');
+  }
+
+  // Resolve coordinates for the given postal code.
+  const geoResponse = await axios.get(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${POSTAL_CODE}&country=${COUNTRY}&language=en&format=json`
+  );
+
+  const location = geoResponse.data.results?.[0];
+  if (!location) {
+    throw new Error('Location not found');
+  }
+
+  // Query Bright Sky for the latest measurements at the resolved coordinates.
+  const weatherResponse = await axios.get(
+    `https://api.brightsky.dev/current_weather?lat=${location.latitude}&lon=${location.longitude}`
+  );
+
+  const current = weatherResponse.data.weather?.[0];
+  if (!current) {
+    throw new Error('Weather data not available');
+  }
+
+  const data: WeatherData = {
+    timestamp: current.timestamp,
+    temperature: current.temperature,
+    humidity: current.relative_humidity,
+    pressure: current.pressure_msl,
+    windSpeed: current.wind_speed,
+    windDirection: current.wind_direction,
+    precipitation: current.precipitation,
+    cloudCover: current.cloud_cover,
+    provider: 'DWD'
+  };
+
+  setCachedData(cacheKey, data);
+  return data;
 };
 
 // OpenWeatherMap API
