@@ -67,4 +67,6 @@ export const WeatherCard = ({ data }: WeatherCardProps) => {
       </div>
     </div>
   );
-}; 
+};
+
+export default WeatherCard;
