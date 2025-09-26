@@ -7,7 +7,7 @@ export interface WeatherData {
   windDirection: number;
   precipitation: number;
   cloudCover: number;
-  provider: 'OpenWeatherMap' | 'OpenMeteo';
+  provider: 'OpenWeatherMap' | 'OpenMeteo' | 'DWD';
 }
 
 export interface WeatherForecast {
@@ -18,7 +18,7 @@ export interface WeatherForecast {
   precipitationAmount: number;
   windSpeed: number;
   windDirection: number;
-  provider: 'OpenWeatherMap' | 'OpenMeteo';
+  provider: 'OpenWeatherMap' | 'OpenMeteo' | 'DWD';
 }
 
 export interface WeatherStats {
