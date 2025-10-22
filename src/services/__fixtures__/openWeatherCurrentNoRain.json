@@ -1,0 +1,23 @@
+{
+  "coord": {
+    "lon": 8.65,
+    "lat": 50.55
+  },
+  "weather": [
+    {
+      "description": "scattered clouds"
+    }
+  ],
+  "main": {
+    "temp": 19.1,
+    "humidity": 70,
+    "pressure": 1009
+  },
+  "wind": {
+    "speed": 3.3,
+    "deg": 140
+  },
+  "clouds": {
+    "all": 42
+  }
+}
