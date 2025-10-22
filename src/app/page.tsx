@@ -1,130 +1,246 @@
 'use client';
 
-import { useState } from 'react';
-import { useWeatherData } from '../hooks/useWeatherData';
-import { WeatherCard } from '../components/WeatherCard';
-import { WeatherChart } from '../components/WeatherChart';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { HistoricalDataView } from '../components/HistoricalDataView';
+import { useEffect, useMemo, useState } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { SearchLocation } from '@/components/SearchLocation';
+import { FavoritesPanel } from '@/components/FavoritesPanel';
+import { CompareBar } from '@/components/CompareBar';
+import { WeatherCard } from '@/components/WeatherCard';
+import { WeatherChart } from '@/components/WeatherChart';
+import { useUnifiedWeather } from '@/hooks/useUnifiedWeather';
 import {
-  transformCurrentWeatherData,
-  transformForecastData,
   transformForecastToChartData,
   transformPrecipitationData
-} from '../utils/weatherDataTransformers';
+} from '@/utils/weatherDataTransformers';
+import type { UnifiedLocation } from '@/types/unifiedWeather';
 
-type Tab = 'current' | 'historical';
+const MAX_LOCATIONS = 3;
+const FAVORITES_KEY = 'weather:favorites';
+const SELECTION_KEY = 'weather:selected';
 
-export default function WeatherDashboard() {
-  const { currentData, forecastData, loading, error } = useWeatherData();
-  const [activeTab, setActiveTab] = useState<Tab>('current');
+type StoredLocation = Omit<UnifiedLocation, 'id'> & { id: string };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
-        <ThemeToggle />
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {[1, 2].map((i) => (
-                <div key={i} className="h-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
-              ))}
-            </div>
-            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded mb-8"></div>
-            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
+const parseStoredLocations = (value: string | null): UnifiedLocation[] => {
+  if (!value) {
+    return [];
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
-        <ThemeToggle />
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
-            <p className="font-semibold">Error: {error}</p>
-            {error.includes('Daily API call limit reached') && (
-              <p className="mt-2 text-sm">
-                We've reached the daily limit for weather API calls. The data will be refreshed automatically when the limit resets.
-                In the meantime, you can still view the last cached weather data.
-              </p>
+  try {
+    const parsed: StoredLocation[] = JSON.parse(value);
+    return parsed.map((item) => ({ ...item }));
+  } catch (error) {
+    console.warn('Failed to parse stored locations', error);
+    return [];
+  }
+};
+
+const storeLocations = (key: string, locations: UnifiedLocation[]) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  localStorage.setItem(key, JSON.stringify(locations));
+};
+
+const locationExists = (collection: UnifiedLocation[], location: UnifiedLocation) =>
+  collection.some((item) => item.id === location.id);
+
+export default function WeatherDashboard() {
+  const [favorites, setFavorites] = useState<UnifiedLocation[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<UnifiedLocation[]>([]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setFavorites(parseStoredLocations(localStorage.getItem(FAVORITES_KEY)));
+    setSelectedLocations(parseStoredLocations(localStorage.getItem(SELECTION_KEY)));
+  }, []);
+
+  useEffect(() => {
+    storeLocations(FAVORITES_KEY, favorites);
+  }, [favorites]);
+
+  useEffect(() => {
+    storeLocations(SELECTION_KEY, selectedLocations);
+  }, [selectedLocations]);
+
+  const { current, forecast, loading, errors, rateLimited, refetch } = useUnifiedWeather(selectedLocations);
+
+  const handleSelectLocation = (location: UnifiedLocation) => {
+    setSelectedLocations((prev) => {
+      if (locationExists(prev, location)) {
+        return prev;
+      }
+      if (prev.length >= MAX_LOCATIONS) {
+        return prev;
+      }
+      return [...prev, location];
+    });
+  };
+
+  const handleRemoveLocation = (id: string) => {
+    setSelectedLocations((prev) => prev.filter((location) => location.id !== id));
+  };
+
+  const handleToggleFavorite = (location: UnifiedLocation) => {
+    setFavorites((prev) => {
+      if (locationExists(prev, location)) {
+        return prev.filter((item) => item.id !== location.id);
+      }
+      return [...prev, location];
+    });
+  };
+
+  const handleRemoveFavorite = (id: string) => {
+    setFavorites((prev) => prev.filter((favorite) => favorite.id !== id));
+  };
+
+  const anyErrors = useMemo(() => Object.values(errors).filter(Boolean).length > 0, [errors]);
+
+  return (
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6 sm:p-8">
+      <ThemeToggle />
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Weather Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Compare OpenWeatherMap and Open-Meteo for up to three locations.
+            </p>
+          </div>
+          {selectedLocations.length > 0 && (
+            <button
+              type="button"
+              onClick={refetch}
+              className="self-start sm:self-auto inline-flex items-center px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+            >
+              Refresh data
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
+          <div className="space-y-6">
+            <SearchLocation
+              favorites={favorites}
+              selectedLocations={selectedLocations}
+              maxSelections={MAX_LOCATIONS}
+              onSelect={handleSelectLocation}
+              onToggleFavorite={handleToggleFavorite}
+            />
+            <FavoritesPanel
+              favorites={favorites}
+              selectedLocations={selectedLocations}
+              maxSelections={MAX_LOCATIONS}
+              onSelect={handleSelectLocation}
+              onRemove={handleRemoveFavorite}
+            />
+          </div>
+
+          <div>
+            <CompareBar locations={selectedLocations} maxSelections={MAX_LOCATIONS} onRemove={handleRemoveLocation} />
+
+            {rateLimited && (
+              <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-700 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200">
+                Daily API limit reached for at least one provider. Showing cached data when available.
+              </div>
+            )}
+
+            {loading && selectedLocations.length > 0 ? (
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {selectedLocations.map((location) => (
+                  <div key={location.id} className="space-y-4 animate-pulse">
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                    <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded" />
+                    <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : selectedLocations.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center text-gray-500 dark:text-gray-400">
+                Select a city from the search results or your favorites to see the comparison.
+              </div>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {selectedLocations.map((location) => {
+                  const currentData = current[location.id];
+                  const forecastData = forecast[location.id];
+                  const locationError = errors[location.id];
+                  const precipitationData = forecastData
+                    ? transformPrecipitationData(forecastData.providers)
+                    : [];
+
+                  return (
+                    <div key={location.id} className="space-y-4">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                              {location.name}
+                            </h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {location.admin1 ? `${location.admin1}, ` : ''}
+                              {location.country}
+                            </p>
+                          </div>
+                        </div>
+                        {locationError && (
+                          <p className="mt-3 text-sm text-red-600 dark:text-red-400">{locationError}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        {currentData?.providers.map((provider) => (
+                          <WeatherCard
+                            key={provider.provider}
+                            provider={provider.provider}
+                            data={provider.data}
+                            fromCache={provider.fromCache}
+                            rateLimited={provider.rateLimited}
+                            error={provider.error}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="space-y-4">
+                        {forecastData?.providers.map((provider) => (
+                          <div key={provider.provider}>
+                            {provider.error ? (
+                              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-sm text-red-600 dark:text-red-400">
+                                {provider.error}
+                              </div>
+                            ) : (
+                              <WeatherChart
+                                title={`${provider.provider} Temperature Forecast`}
+                                type="line"
+                                data={provider.data ? transformForecastToChartData(provider.data) : []}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {precipitationData.length > 0 && (
+                        <WeatherChart
+                          title="Precipitation Forecast Comparison"
+                          type="bar"
+                          data={precipitationData}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
-      </div>
-    );
-  }
 
-  const currentChartData = transformCurrentWeatherData(currentData);
-  const forecastByProvider = transformForecastData(forecastData);
-  const precipitationData = transformPrecipitationData(forecastData);
-
-  return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
-      <ThemeToggle />
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Weather Dashboard</h1>
-        
-        {/* Tab Navigation */}
-        <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('current')}
-              className={`${
-                activeTab === 'current'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Current Weather
-            </button>
-            <button
-              onClick={() => setActiveTab('historical')}
-              className={`${
-                activeTab === 'historical'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              Historical Data
-            </button>
-          </nav>
-        </div>
-
-        {activeTab === 'current' ? (
-          <>
-            {/* Current Weather Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {currentData.map((data) => (
-                <WeatherCard key={data.provider} data={data} />
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {/* Temperature Forecast Charts by Provider */}
-              {Object.entries(forecastByProvider).map(([provider, forecasts]) => (
-                <WeatherChart
-                  key={provider}
-                  title={`${provider} Temperature Forecast`}
-                  type="line"
-                  data={transformForecastToChartData(forecasts)}
-                  className="mb-8"
-                />
-              ))}
-            </div>
-
-            {/* Precipitation Forecast Comparison */}
-            <WeatherChart
-              title="Precipitation Forecast Comparison"
-              type="bar"
-              data={precipitationData}
-            />
-          </>
-        ) : (
-          <HistoricalDataView />
+        {anyErrors && (
+          <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+            Some data could not be loaded. Cached or partial results are displayed when possible.
+          </div>
         )}
       </div>
     </div>
