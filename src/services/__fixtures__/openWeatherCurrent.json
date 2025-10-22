@@ -1,0 +1,26 @@
+{
+  "coord": {
+    "lon": 8.65,
+    "lat": 50.55
+  },
+  "weather": [
+    {
+      "description": "light rain"
+    }
+  ],
+  "main": {
+    "temp": 18.4,
+    "humidity": 77,
+    "pressure": 1011
+  },
+  "wind": {
+    "speed": 4.6,
+    "deg": 135
+  },
+  "rain": {
+    "1h": 0.6
+  },
+  "clouds": {
+    "all": 68
+  }
+}
