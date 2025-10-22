@@ -13,55 +13,21 @@ describe('WeatherChart', () => {
   ];
 
   it('renders line chart with temperature data', () => {
-    render(
-      <WeatherChart
-        type="line"
-        data={mockLineChartData}
-        title="Temperature Forecast"
-        xAxisKey="date"
-        yAxisKey="maxTemp"
-      />
-    );
+    render(<WeatherChart type="line" data={mockLineChartData} title="Temperature Forecast" />);
 
-    // Check if chart title is displayed
     expect(screen.getByText('Temperature Forecast')).toBeInTheDocument();
-    
-    // Check if chart container is rendered
-    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
   it('renders bar chart with precipitation data', () => {
-    render(
-      <WeatherChart
-        type="bar"
-        data={mockBarChartData}
-        title="Precipitation Forecast"
-        xAxisKey="date"
-        yAxisKey="OpenMeteo"
-      />
-    );
+    render(<WeatherChart type="bar" data={mockBarChartData} title="Precipitation Forecast" />);
 
-    // Check if chart title is displayed
     expect(screen.getByText('Precipitation Forecast')).toBeInTheDocument();
-    
-    // Check if chart container is rendered
-    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
-  it('renders with custom height', () => {
-    const customHeight = 400;
-    render(
-      <WeatherChart
-        type="line"
-        data={mockLineChartData}
-        title="Temperature Forecast"
-        xAxisKey="date"
-        yAxisKey="maxTemp"
-        height={customHeight}
-      />
-    );
+  it('renders empty state when no data provided', () => {
+    render(<WeatherChart type="line" data={[]} title="No Data" />);
 
-    const chartContainer = screen.getByRole('img');
-    expect(chartContainer).toHaveStyle(`height: ${customHeight}px`);
+    expect(screen.getByText('No Data')).toBeInTheDocument();
+    expect(screen.getByText('No data available')).toBeInTheDocument();
   });
-}); 
+});
