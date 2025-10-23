@@ -56,7 +56,7 @@ const forecastResponse: UnifiedForecastResponse = {
       rateLimited: false,
       data: [
         {
-          date: '2024-01-02',
+          date: '2024-01-02T00:00:00.000Z',
           maxTemperature: 22,
           minTemperature: 15,
           precipitationProbability: 20,
@@ -72,7 +72,7 @@ const forecastResponse: UnifiedForecastResponse = {
       rateLimited: false,
       data: [
         {
-          date: '2024-01-02',
+          date: '2024-01-02T00:00:00.000Z',
           maxTemperature: 21,
           minTemperature: 14,
           precipitationProbability: 15,

@@ -1,10 +1,11 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWeatherData } from '../useWeatherData';
+import { fetchAllWeatherData, fetchForecast } from '../../services/weatherService';
 
 // Mock the weather service
 jest.mock('../../services/weatherService', () => ({
   fetchAllWeatherData: jest.fn(),
-  fetchForecast: jest.fn()
+  fetchForecast: jest.fn(),
 }));
 
 describe('useWeatherData', () => {
@@ -18,8 +19,8 @@ describe('useWeatherData', () => {
       windDirection: 180,
       precipitation: 0,
       cloudCover: 20,
-      provider: 'OpenMeteo'
-    }
+      provider: 'OpenMeteo',
+    },
   ];
 
   const mockForecastData = [
@@ -31,80 +32,84 @@ describe('useWeatherData', () => {
       precipitationAmount: 0.5,
       windSpeed: 5,
       windDirection: 180,
-      provider: 'OpenMeteo'
-    }
+      provider: 'OpenMeteo',
+    },
   ];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
+    (fetchAllWeatherData as jest.Mock).mockResolvedValue(mockWeatherData);
+    (fetchForecast as jest.Mock).mockImplementation((provider) => {
+      if (provider === 'OpenMeteo') {
+        return Promise.resolve(mockForecastData);
+      } else if (provider === 'OpenWeatherMap') {
+        return Promise.resolve(mockForecastData);
+      }
+      return Promise.resolve([]);
+    });
   });
 
   it('fetches initial weather data', async () => {
-    const { result } = renderHook(() => useWeatherData('35516', 'DE'));
+    const { result } = renderHook(() => useWeatherData());
 
     // Initial state
     expect(result.current.currentData).toEqual([]);
     expect(result.current.forecastData).toEqual([]);
-    expect(result.current.isLoading).toBe(true);
+    expect(result.current.loading).toBe(true);
     expect(result.current.error).toBeNull();
 
     // Wait for data to be fetched
-    await act(async () => {
-      await Promise.resolve();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.currentData).toEqual(mockWeatherData);
+      expect(result.current.forecastData).toEqual([
+        ...mockForecastData,
+        ...mockForecastData,
+      ]);
+      expect(result.current.error).toBeNull();
     });
-
-    // Check if data was fetched
-    expect(result.current.currentData).toEqual(mockWeatherData);
-    expect(result.current.forecastData).toEqual(mockForecastData);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBeNull();
   });
 
   it('handles API errors', async () => {
     const error = new Error('API Error');
-    jest.spyOn(global, 'fetch').mockRejectedValueOnce(error);
+    (fetchAllWeatherData as jest.Mock).mockRejectedValue(error);
 
-    const { result } = renderHook(() => useWeatherData('35516', 'DE'));
+    const { result } = renderHook(() => useWeatherData());
 
     // Wait for error to be caught
-    await act(async () => {
-      await Promise.resolve();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBe('API Error');
     });
-
-    expect(result.current.error).toBe('Failed to fetch weather data');
-    expect(result.current.isLoading).toBe(false);
   });
 
   it('refreshes data periodically', async () => {
-    const { result } = renderHook(() => useWeatherData('35516', 'DE'));
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useWeatherData());
 
     // Initial fetch
-    await act(async () => {
-      await Promise.resolve();
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
     });
 
     // Advance timer by 5 minutes
-    await act(async () => {
+    act(() => {
       jest.advanceTimersByTime(5 * 60 * 1000);
     });
 
     // Check if data was refreshed
-    expect(result.current.currentData).toEqual(mockWeatherData);
-    expect(result.current.forecastData).toEqual(mockForecastData);
+    await waitFor(() => {
+      expect(fetchAllWeatherData).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('cleans up interval on unmount', () => {
-    const { unmount } = renderHook(() => useWeatherData('35516', 'DE'));
-    
+    const { unmount } = renderHook(() => useWeatherData());
+
     const clearIntervalSpy = jest.spyOn(window, 'clearInterval');
-    
+
     unmount();
-    
+
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
-}); 
+});

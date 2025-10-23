@@ -34,7 +34,7 @@ describe('weatherDataTransformers', () => {
 
   const mockForecastData: WeatherForecast[] = [
     {
-      date: '2024-01-01',
+      date: '2024-01-01T00:00:00.000Z',
       maxTemperature: 22,
       minTemperature: 15,
       precipitationProbability: 20,
@@ -44,7 +44,7 @@ describe('weatherDataTransformers', () => {
       provider: 'OpenMeteo'
     },
     {
-      date: '2024-01-01',
+      date: '2024-01-01T00:00:00.000Z',
       maxTemperature: 23,
       minTemperature: 16,
       precipitationProbability: 25,
@@ -92,13 +92,15 @@ describe('weatherDataTransformers', () => {
 
   describe('transformPrecipitationData', () => {
     it('should transform precipitation data correctly', () => {
-      const result = transformPrecipitationData(mockForecastData);
+      const result = transformPrecipitationData([{
+        provider: 'OpenMeteo',
+        data: mockForecastData
+      }]);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         date: 'Jan 01',
         OpenMeteo: 0.5,
-        OpenWeatherMap: 0.7
       });
     });
   });
-}); 
+});

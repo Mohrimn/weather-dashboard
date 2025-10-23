@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { UnifiedForecastDay, UnifiedForecastProviderData } from '@/types/unifiedWeather';
+import { WeatherData, WeatherForecast } from '@/types/weather';
 
 export interface ChartDataPoint {
   date: string;
@@ -11,6 +12,27 @@ export interface PrecipitationChartData {
   date: string;
   [key: string]: string | number;
 }
+
+export const transformCurrentWeatherData = (data: WeatherData[]) => {
+  return data.map((item) => ({
+    provider: item.provider,
+    temperature: item.temperature,
+    humidity: item.humidity,
+    windSpeed: item.windSpeed,
+    precipitation: item.precipitation,
+  }));
+};
+
+export const transformForecastData = (data: WeatherForecast[]) => {
+  const groupedByProvider: Record<string, WeatherForecast[]> = {};
+  for (const item of data) {
+    if (!groupedByProvider[item.provider]) {
+      groupedByProvider[item.provider] = [];
+    }
+    groupedByProvider[item.provider].push(item);
+  }
+  return groupedByProvider;
+};
 
 export const transformForecastToChartData = (forecasts: UnifiedForecastDay[]): ChartDataPoint[] =>
   forecasts.map((forecast) => ({
