@@ -5,13 +5,8 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { SearchLocation } from '@/components/SearchLocation';
 import { FavoritesPanel } from '@/components/FavoritesPanel';
 import { CompareBar } from '@/components/CompareBar';
-import { WeatherCard } from '@/components/WeatherCard';
-import { WeatherChart } from '@/components/WeatherChart';
+import { LocationComparisonPanel } from '@/components/LocationComparisonPanel';
 import { useUnifiedWeather } from '@/hooks/useUnifiedWeather';
-import {
-  transformForecastToChartData,
-  transformPrecipitationData
-} from '@/utils/weatherDataTransformers';
 import type { UnifiedLocation } from '@/types/unifiedWeather';
 
 const MAX_LOCATIONS = 3;
@@ -139,7 +134,7 @@ export default function WeatherDashboard() {
             />
           </div>
 
-          <div>
+          <div className="space-y-6">
             <CompareBar locations={selectedLocations} maxSelections={MAX_LOCATIONS} onRemove={handleRemoveLocation} />
 
             {rateLimited && (
@@ -149,12 +144,24 @@ export default function WeatherDashboard() {
             )}
 
             {loading && selectedLocations.length > 0 ? (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-8">
                 {selectedLocations.map((location) => (
-                  <div key={location.id} className="space-y-4 animate-pulse">
-                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-                    <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded" />
-                    <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div
+                    key={location.id}
+                    className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-slate-950/40"
+                  >
+                    <div className="space-y-4 animate-pulse">
+                      <div className="h-8 bg-slate-200/80 dark:bg-slate-700 rounded w-1/3" />
+                      <div className="h-4 bg-slate-200/70 dark:bg-slate-700 rounded w-1/4" />
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="h-40 bg-slate-200/80 dark:bg-slate-700 rounded-2xl" />
+                        <div className="h-40 bg-slate-200/80 dark:bg-slate-700 rounded-2xl" />
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="h-56 bg-slate-200/80 dark:bg-slate-700 rounded-2xl" />
+                        <div className="h-56 bg-slate-200/80 dark:bg-slate-700 rounded-2xl" />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -163,73 +170,21 @@ export default function WeatherDashboard() {
                 Select a city from the search results or your favorites to see the comparison.
               </div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-8">
                 {selectedLocations.map((location) => {
                   const currentData = current[location.id];
                   const forecastData = forecast[location.id];
                   const locationError = errors[location.id];
-                  const precipitationData = forecastData
-                    ? transformPrecipitationData(forecastData.providers)
-                    : [];
 
                   return (
-                    <div key={location.id} className="space-y-4">
-                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                              {location.name}
-                            </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {location.admin1 ? `${location.admin1}, ` : ''}
-                              {location.country}
-                            </p>
-                          </div>
-                        </div>
-                        {locationError && (
-                          <p className="mt-3 text-sm text-red-600 dark:text-red-400">{locationError}</p>
-                        )}
-                      </div>
-
-                      <div className="space-y-4">
-                        {currentData?.providers.map((provider) => (
-                          <WeatherCard
-                            key={provider.provider}
-                            provider={provider.provider}
-                            data={provider.data}
-                            fromCache={provider.fromCache}
-                            rateLimited={provider.rateLimited}
-                            error={provider.error}
-                          />
-                        ))}
-                      </div>
-
-                      <div className="space-y-4">
-                        {forecastData?.providers.map((provider) => (
-                          <div key={provider.provider}>
-                            {provider.error ? (
-                              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 text-sm text-red-600 dark:text-red-400">
-                                {provider.error}
-                              </div>
-                            ) : (
-                              <WeatherChart
-                                title={`${provider.provider} Temperature Forecast`}
-                                type="line"
-                                data={provider.data ? transformForecastToChartData(provider.data) : []}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {precipitationData.length > 0 && (
-                        <WeatherChart
-                          title="Precipitation Forecast Comparison"
-                          type="bar"
-                          data={precipitationData}
-                        />
-                      )}
-                    </div>
+                    <LocationComparisonPanel
+                      key={location.id}
+                      location={location}
+                      currentData={currentData}
+                      forecastData={forecastData}
+                      error={locationError}
+                      isLoading={loading}
+                    />
                   );
                 })}
               </div>

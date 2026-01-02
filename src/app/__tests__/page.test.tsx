@@ -139,8 +139,8 @@ describe('Weather Dashboard Page', () => {
       expect(screen.getByText('Berlin')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('OpenWeatherMap')).toBeInTheDocument();
-    expect(screen.getByText('OpenMeteo')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'OpenWeatherMap' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'OpenMeteo' })).toBeInTheDocument();
     expect(screen.getByText('OpenWeatherMap Temperature Forecast')).toBeInTheDocument();
   });
 });

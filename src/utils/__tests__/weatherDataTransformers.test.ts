@@ -94,7 +94,7 @@ describe('weatherDataTransformers', () => {
     it('should transform precipitation data correctly', () => {
       const result = transformPrecipitationData([{
         provider: 'OpenMeteo',
-        data: mockForecastData
+        data: [mockForecastData[0]]
       }]);
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({

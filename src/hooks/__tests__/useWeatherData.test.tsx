@@ -1,11 +1,22 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWeatherData } from '../useWeatherData';
 import { fetchAllWeatherData, fetchForecast } from '../../services/weatherService';
+import { historicalDataService } from '../../services/historicalDataService';
 
 // Mock the weather service
 jest.mock('../../services/weatherService', () => ({
   fetchAllWeatherData: jest.fn(),
   fetchForecast: jest.fn(),
+}));
+
+jest.mock('../../services/historicalDataService', () => ({
+  historicalDataService: {
+    storeCurrentWeather: jest.fn(),
+    storeForecast: jest.fn(),
+    getHistoricalCurrentWeather: jest.fn(),
+    getHistoricalForecast: jest.fn(),
+    clearOldData: jest.fn(),
+  }
 }));
 
 describe('useWeatherData', () => {
@@ -47,6 +58,15 @@ describe('useWeatherData', () => {
       }
       return Promise.resolve([]);
     });
+    (historicalDataService.storeCurrentWeather as jest.Mock).mockResolvedValue(undefined);
+    (historicalDataService.storeForecast as jest.Mock).mockResolvedValue(undefined);
+    (historicalDataService.getHistoricalCurrentWeather as jest.Mock).mockResolvedValue([]);
+    (historicalDataService.getHistoricalForecast as jest.Mock).mockResolvedValue([]);
+    (historicalDataService.clearOldData as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('fetches initial weather data', async () => {
